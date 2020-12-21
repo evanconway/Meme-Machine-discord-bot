@@ -14,7 +14,7 @@ const Discord = require('discord.js');
 const client = new Discord.Client();
 
 client.on('ready', () => {
-    console.log('Our bot is ready to go!');
+    console.log('Meme Machine is ready to go!');
 })
 
 client.on('message', msg => {
@@ -25,6 +25,9 @@ client.on('message', msg => {
 
     /// boys boys boys everyone ping
     if (message[0] === message[1] === message[2]) {
+        console.log('Tripe word detected.');
+
+
         let pingEveryone = false;
         if (message[0] === 'boys') pingEveryone = true;
         if (message[0] === 'bois') pingEveryone = true;
