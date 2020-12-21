@@ -70,11 +70,11 @@ client.on('message', msg => {
         }
         */
 
-        if (msg.content === 'I love bots.') {
+        if (msg.content.toLowerCase().includes('i love bots')) {
             msg.react('❤️');
         }
 
-        if (msg.content === 'I hate bots.') {
+        if (msg.content.toLowerCase().includes('i hate bots')) {
             msg.react('💩');
         }
 
