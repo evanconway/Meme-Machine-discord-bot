@@ -70,12 +70,20 @@ client.on('message', msg => {
         }
         */
 
-        if (msg.content.toLowerCase().includes('i love bots')) {
+        if (msg.content.toLowerCase().startsWith('i love bots')) {
             msg.react('❤️');
         }
 
-        if (msg.content.toLowerCase().includes('i hate bots')) {
+        if (msg.content.toLowerCase().startsWith('i hate bots')) {
             msg.react('💩');
+        }
+
+        if (msg.content.toLowerCase() === 'good bot') {
+            msg.react('👍');
+        }
+
+        if (msg.content.toLowerCase() === 'bad bot') {
+            msg.react('😦');
         }
 
         if (lowerArr[0] === 'ping') {
