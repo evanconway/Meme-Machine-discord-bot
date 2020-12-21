@@ -18,12 +18,21 @@ client.on('ready', () => {
 })
 
 client.on('message', msg => {
-    if (msg.content === 'boyz boyz boyz') {
-        msg.channel.send('@everyone');
-    }
 
-    if (msg.content === 'ping') {
-        msg.channel.send('pong');
+    let message = msg.content.toLowerCase.split(' ');
+
+    console.log(message);
+
+    /// boys boys boys everyone ping
+    if (message[0] === message[1] === message[2]) {
+        let pingEveryone = false;
+        if (message[0] === 'boys') pingEveryone = true;
+        if (message[0] === 'bois') pingEveryone = true;
+        if (message[0] === 'boyz') pingEveryone = true;
+
+        if (pingEveryone) {
+            msg.channel.send('@Everyone');
+        }
     }
 
     /*
