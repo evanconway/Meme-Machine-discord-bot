@@ -19,22 +19,22 @@ client.on('ready', () => {
 
 client.on('message', msg => {
 
-    let message = msg.content.toLowerCase.split(' ');
+    let msgArr = msg.content.split(' ');
+    let lowerArr = msg.content.toLowerCase().split(' ');
 
-    console.log(message);
-
-    /// boys boys boys everyone ping
-    if (message[0] === message[1] === message[2]) {
-        console.log('Tripe word detected.');
-
+    /// Triple word effects
+    if (lowerArr.length === 3 && lowerArr[0] === lowerArr[1] && lowerArr[1] === lowerArr[2]) {
+        console.log('Triple word detected.');
 
         let pingEveryone = false;
-        if (message[0] === 'boys') pingEveryone = true;
-        if (message[0] === 'bois') pingEveryone = true;
-        if (message[0] === 'boyz') pingEveryone = true;
+        if (lowerArr[0] === 'boys') pingEveryone = true;
+        if (lowerArr[0] === 'bois') pingEveryone = true;
+        if (lowerArr[0] === 'boyz') pingEveryone = true;
+        if (lowerArr[0] === 'guys') pingEveryone = true;
+        if (lowerArr[0] === 'guyz') pingEveryone = true;
 
         if (pingEveryone) {
-            msg.channel.send('@Everyone');
+            msg.channel.send('@everyone ' + msg.member.user.username + ' has summoned the boys!');
         }
     }
 
