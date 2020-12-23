@@ -7,6 +7,7 @@ Roles are based on IDs, not string names. In fact most things in
 Discord are based on IDs instead of string names.
 Look up 'parials' to deal with messages/data posted before the bot joined/updated.
 */
+const BOTID = 'Meme Machine#9639'
 
 require('dotenv').config();
 
@@ -14,8 +15,7 @@ const Discord = require('discord.js');
 const client = new Discord.Client();
 const messages_max = 5;
 const messages = []; // collection of messages
-
-const BOTID = 'Meme Machine#9639'
+const callResponses = new Map();
 
 client.on('ready', () => {
     console.log('Meme Machine is ready to go!');
@@ -46,19 +46,7 @@ client.on('message', msg => {
         parsing different commands. 
         */
         for (let i = 0; i < words.length; i++) {
-            let puncFound = true;
-            while (puncFound) {
-                puncFound = false;
-                if (words[i].endsWith('.')) puncFound = true;
-                if (words[i].endsWith(',')) puncFound = true;
-                if (words[i].endsWith('?')) puncFound = true;
-                if (words[i].endsWith('!')) puncFound = true;
-                if (words[i].endsWith(':')) puncFound = true;
-                if (words[i].endsWith(';')) puncFound = true;
-                if (puncFound) {
-                    words[i] = words[i].substr(0, words[i].length - 1);
-                }
-            }
+            words[i] = stripPunc(words[i]);
         }
 
 
@@ -97,38 +85,15 @@ client.on('message', msg => {
                     console.log("teach command detected");
 
                     // gather trigger phrase
-                    if (words.length === index || !words[index].startsWith('"')) {
-                        teach = false;
-                        msg.reply(`it looks like you're trying to teach me something, but I don't understand! Your "call" phrase must start with double quotes.`);
-                    } else {
-                        /* If the 5th word starts with quote marks, then 
-                        the learning syntax is valid. We will iterate
-                        over the words in the sentence until we find a 
-                        word that ends in quotes. Each iteration, we add
-                        words to the trigger phrase. 
-                        */
-                        words[index] = words[index].slice(1, words[index].length); // remove start quote mark
-                        let searching = true
-                        while (searching && index < words.length) {
-                            if (words[index].endsWith('"')) {
-                                searching = false;
-                                words[index] = words[index].slice(0, words[index].length - 1); // remove end quote mark
-                            }
-                            trigger.push(words[index]);
-                            index++
-                        }
+                    trigger = gatherPhrase(words, index);
 
-                        /*
-                        If we get to this point, and 'searching' is still true, then we did not
-                        find a valid trigger phrase. We must notify the user.
-                        */
-                        if (searching) {
-                            teach = false;
-                            msg.reply(`it looks like you're trying to teach me something, but I don't understand! Your "call" phrase must end with double quotes.`);
-                        } else {
-                            triggerPhrase = trigger.join(' ');
-                            console.log(`Trigger phrase: ${triggerPhrase}`);
-                        }
+                    if (words.length === index || !trigger) {
+                        teach = false;
+                        msg.reply(`it looks like you're trying to teach me something, but I don't understand! Your "call" phrase must start and end with double quotes.`);
+                    } else {
+                        triggerPhrase = trigger.phrase;
+                        console.log(`The trigger phrase is: ${triggerPhrase}`);
+                        index = trigger.index;
                     }
                 }
 
@@ -165,10 +130,27 @@ client.on('message', msg => {
                     console.log(`Response type: ${responseType}`);
                     if (responseType === 'respond') {
                         // gather response phrase
+                        let response = gatherPhrase(words_og, index, false);
+                        if (response) {
+                            let responsePhrase = response.phrase;
+                            callResponses.set(triggerPhrase, responsePhrase);
+                            msg.channel.send(`Got it! When someone says "${triggerPhrase}", I'll say "${responsePhrase}"`);
+                            console.log('call and response learned');
+                            console.log(callResponses);
+                        }
                     }
                 }
 
             }
+        }
+
+        let simpleMsg = words.join(' ');
+        console.log(simpleMsg);
+
+        // learned call and responses
+        if (callResponses.has(simpleMsg)) {
+            console.log('call recognized, giving response');
+            msg.channel.send(callResponses.get(simpleMsg));
         }
 
         // single word effects (some are teachable!)
@@ -223,9 +205,55 @@ client.on('message', msg => {
     }
 })
 
+/*
+This function will determine if there is a string of words in the given arr
+starting at the given index that satisfy our syntax for a "phrase". A phrase 
+starts and ends with double quotes. If a valid phrase is found, an object with
+a "phrase" and "index" field is returned. The phrase field is a valid phrase
+as an array. The index field is the index of the word 1 spot past the end of
+the valid phrase. If there is no valid phrase, the function returns null.
+*/
+const gatherPhrase = function(arr, startIndex, rmvPunc = true) {
+    let index = startIndex;
+    if (!arr[index].startsWith('"')) return null;
+    arr[index] = arr[index].slice(1, arr[index].length); // remove starting quote
 
-const gatherPhrase = function(arr, startIndex) {
+    let searching = true;
+    let phrase = [];
+    while (searching && index < arr.length) {
+        if (arr[index].endsWith('"')) {
+            searching = false;
+            arr[index] = arr[index].slice(0, arr[index].length - 1); // remove end quote
+            if (rmvPunc) arr[index] = stripPunc(arr[index]); // remove extra punctuation
+        }
+        phrase.push(arr[index]);
+        index++;
+    }
 
+    // if we reach this point, and searching is still true, there was no valid phrase
+    if (searching) return null;
+
+    phrase = phrase.join(' ');
+
+    return { phrase, index };
+}
+
+// remove punctuation from end of word
+const stripPunc = function(str) {
+    let puncFound = true;
+    while (puncFound) {
+        puncFound = false;
+        if (str.endsWith('.')) puncFound = true;
+        if (str.endsWith(',')) puncFound = true;
+        if (str.endsWith('?')) puncFound = true;
+        if (str.endsWith('!')) puncFound = true;
+        if (str.endsWith(':')) puncFound = true;
+        if (str.endsWith(';')) puncFound = true;
+        if (puncFound) {
+            str = str.substr(0, str.length - 1);
+        }
+    }
+    return str;
 }
 
 client.login(process.env.BOT_TOKEN);
