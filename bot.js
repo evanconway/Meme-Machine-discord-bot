@@ -23,12 +23,17 @@ client.on('ready', () => {
 
 client.on('message', msg => {
 
+    if (msg.channel.type === 'dm') {
+        console.log('private message received');
+    }
+
     // add message to collection
     messages.push(msg);
     if (messages.length > messages_max) messages.splice(0, 1);
 
     // only react if message was from user
-    if (msg.member.user.tag != BOTID) {
+    // we check if user is null to avoid crashes from private messages
+    if (msg.channel.type != 'dm' && msg.member.user.tag != BOTID) {
     
         // delete message flag
         let deleteMsg = false;
@@ -56,34 +61,113 @@ client.on('message', msg => {
             }
         }
 
-        // teach the bot!
-        /* 
-        The bot can be taught simple responses to commands. The
-        syntax to teach is as follows:
-        Hey bot, when I say "trigger phrase", you say "response".
-        We're going to make the commas and punctuation optional. 
-        */
-        if (words[0] === 'hey' && words.length >= 9) {
-            let teach = true;
-            if (!words[1] === 'bot') teach = false;
-            if (!words[2] === 'when') teach = false;
-            if (!words[3] === 'i') teach = false;
-            if (!words[4] === 'say') teach = false;
 
-            // gather trigger phrase
-            if (!words[5].startsWith('"')) teach = false;
-            else {
-                /* If the 5th word starts with quote marks, then 
-                the learning syntax is valid. We will iterate
-                over the words in the sentence until we find a 
-                word that ends in quotes. Each iteration, we add
-                words to the trigger phrase. 
-                */
+        // address the bot!
+        if (words.length >= 2 && words[0] === 'hey' && words[1] === 'bot') {
+
+            // say hi back
+            if (words.length === 2) {
+                msg.channel.send('Hi ' + msg.member.user.username + '!');
+            }
+
+            // teach the bot!
+            /*
+            The bot can be taught simple responses to commands. The
+            syntax to teach is as follows:
+
+            Hey bot, when I say "trigger", you say "response".
+
+            Punctuation in the syntax is optional. Notice that the 
+            minimum number of words in a teach command is 9. If this
+            is true, we need to check if the message is a teach command.
+            We have already checked the first two with 'hey bot'.
+            */
+            if (words.length >= 5) {
                 let trigger = [];
-                for (let i = 5, searching = true; searching; i++) {
-                    trigger.push(words[i]);
-                    if (words[i].endsWith('"')) searching = false;
+                let triggerPhrase = '';
+                let responseType = null;
+                let index = 2;
+                let teach = true;
+                if (!words[index++] === 'when') teach = false;
+                if (!words[index++] === 'i') teach = false;
+                if (!words[index++] === 'say') teach = false;
+
+                // teach command started, gather the trigger phrase
+                if (teach) {
+                    console.log("teach command detected");
+
+                    // gather trigger phrase
+                    if (words.length === index || !words[index].startsWith('"')) {
+                        teach = false;
+                        msg.reply(`it looks like you're trying to teach me something, but I don't understand! Your "call" phrase must start with double quotes.`);
+                    } else {
+                        /* If the 5th word starts with quote marks, then 
+                        the learning syntax is valid. We will iterate
+                        over the words in the sentence until we find a 
+                        word that ends in quotes. Each iteration, we add
+                        words to the trigger phrase. 
+                        */
+                        words[index] = words[index].slice(1, words[index].length); // remove start quote mark
+                        let searching = true
+                        while (searching && index < words.length) {
+                            if (words[index].endsWith('"')) {
+                                searching = false;
+                                words[index] = words[index].slice(0, words[index].length - 1); // remove end quote mark
+                            }
+                            trigger.push(words[index]);
+                            index++
+                        }
+
+                        /*
+                        If we get to this point, and 'searching' is still true, then we did not
+                        find a valid trigger phrase. We must notify the user.
+                        */
+                        if (searching) {
+                            teach = false;
+                            msg.reply(`it looks like you're trying to teach me something, but I don't understand! Your "call" phrase must end with double quotes.`);
+                        } else {
+                            triggerPhrase = trigger.join(' ');
+                            console.log(`Trigger phrase: ${triggerPhrase}`);
+                        }
+                    }
                 }
+
+                // check for action after trigger phrase
+                if (teach) {
+                    /*
+                    Note that the index will now be at the word after 
+                    the trigger phrase. From here we can decide what the
+                    user wants us to do after the trigger phrase is called.
+                    Though for now, the only option is "you say", or
+                    respond. Later, we will have to add correct length checks
+                    on the word array for the different action options.
+                    */
+
+                    // check for "respond" action
+                    if (!responseType && words.length - index >= 3) {
+                        responseType = 'respond';
+                        if (words[index] != 'you') responseType = null;
+                        if (words[index + 1] != 'say') responseType = null;
+                        // move index to correct position if valid
+                        if (responseType) index += 2;
+                    }
+
+                    // notify user if action is not specified
+                    if (!responseType) {
+                        msg.reply(`I understand the trigger phrase "${triggerPhrase}", but not what to do afterwards.`);
+                        teach = false;
+                    }
+                }
+
+                // check different actions
+                // Note that here, the index will be moved to the correct position to continue parsing.
+                if (teach) {
+                    console.log(`Response type: ${responseType}`);
+                    if (responseType === 'respond') {
+                        // gather response phrase
+                    }
+                }
+
             }
         }
 
@@ -138,5 +222,10 @@ client.on('message', msg => {
         }
     }
 })
+
+
+const gatherPhrase = function(arr, startIndex) {
+
+}
 
 client.login(process.env.BOT_TOKEN);
