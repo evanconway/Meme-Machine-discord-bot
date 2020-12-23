@@ -52,7 +52,6 @@ client.on('message', msg => {
                 if (words[i].endsWith(';')) puncFound = true;
                 if (puncFound) {
                     words[i] = words[i].substr(0, words[i].length - 1);
-                    console.log('punctuation removed');
                 }
             }
         }
