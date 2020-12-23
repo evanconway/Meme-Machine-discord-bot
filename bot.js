@@ -49,9 +49,15 @@ client.on('message', msg => {
             words[i] = stripPunc(words[i]);
         }
 
+        let firstIsGreet = false;
+        if (words[0] === 'hey') firstIsGreet = true;
+        if (words[0] === 'hi') firstIsGreet = true;
+        if (words[0] === 'hello') firstIsGreet = true;
+        if (words[0] === 'yo') firstIsGreet = true;
+        if (words[0] === 'sup') firstIsGreet = true;
 
         // address the bot!
-        if (words.length >= 2 && words[0] === 'hey' && words[1] === 'bot') {
+        if (words.length >= 2 && firstIsGreet && words[1] === 'bot') {
 
             // say hi back
             if (words.length === 2) {
@@ -117,6 +123,14 @@ client.on('message', msg => {
                         if (responseType) index += 2;
                     }
 
+                    // check for "do nothing"
+                    if (!responseType && words.length - index >= 2) {
+                        responseType = 'delete';
+                        if (words[index] != 'do') responseType = null;
+                        if (words[index + 1] != 'nothing') responseType = null;
+                        // no need to worry about index
+                    }
+
                     // notify user if action is not specified
                     if (!responseType) {
                         msg.reply(`I understand the trigger phrase "${triggerPhrase}", but not what to do afterwards.`);
@@ -137,7 +151,14 @@ client.on('message', msg => {
                             msg.channel.send(`Got it! When someone says "${triggerPhrase}", I'll say "${responsePhrase}"`);
                             console.log('call and response learned');
                             console.log(callResponses);
+                        } else {
+                            msg.reply(`I don't understand. Make sure your "response" starts and ends with double quotes.`);
                         }
+                    }
+
+                    if (responseType === 'delete') {
+                        if (callResponses.has(triggerPhrase)) callResponses.delete(triggerPhrase);
+                        msg.channel.send(`Understood. I won't respond to "${triggerPhrase}" anymore.`);
                     }
                 }
 
@@ -192,7 +213,7 @@ client.on('message', msg => {
             msg.react('😦');
         }
 
-        if (words[0] === 'ping') {
+        if (words[0] === 'ping' && !callResponses.has('ping')) {
             msg.channel.send('pong');
         }
 
