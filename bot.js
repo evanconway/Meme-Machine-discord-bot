@@ -61,15 +61,10 @@ client.on('message', msg => {
             words[i] = stripPunc(words[i]);
         }
 
-        // replace different quote mark types with default
-        
+        // replace single quote mark types with default
         for (let i = 0; i < words.length; i++) {
             for (let c = 0; c < words[i].length; c++) {
                 let replace = false;
-                if (DOUBLE_QUOTES.includes(words[i][c])) {
-                    replace = words[i].substring(0, c) + `"`;
-                    console.log(`replacing abnormal double quote: ${words[i][c]}`);
-                }
                 if (SINGLE_QUOTES.includes(words[i][c])) {
                     replace = words[i].substring(0, c) + `'`;
                     console.log(`replacing abnormal single quote: ${words[i][c]}`);
@@ -83,7 +78,6 @@ client.on('message', msg => {
                 if (replace) words[i] = replace;
             }
         }
-        
 
         console.log(words);
 
@@ -309,13 +303,18 @@ the valid phrase. If there is no valid phrase, the function returns null.
 */
 const gatherPhrase = function(arr, startIndex, rmvPunc = true) {
     let index = startIndex;
-    if (!arr[index].startsWith('"')) return null;
+
+    let char = arr[index][0];
+
+    // quit if starting char is not a double quote
+    if (!DOUBLE_QUOTES.includes(char)) return null;
     arr[index] = arr[index].slice(1, arr[index].length); // remove starting quote
 
     let searching = true;
     let phrase = [];
     while (searching && index < arr.length) {
-        if (arr[index].endsWith('"')) {
+        char = arr[index][arr[index].length - 1]; // check if ends in quote
+        if (DOUBLE_QUOTES.includes(char)) {
             searching = false;
             arr[index] = arr[index].slice(0, arr[index].length - 1); // remove end quote
             if (rmvPunc) arr[index] = stripPunc(arr[index]); // remove extra punctuation
