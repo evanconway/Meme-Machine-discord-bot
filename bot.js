@@ -15,7 +15,19 @@ const Discord = require('discord.js');
 const client = new Discord.Client();
 const messages_max = 5;
 const messages = []; // collection of messages
-const callResponses = new Map();
+
+const DOUBLE_QUOTES = `“‟””〝〞＂❝❞"`;
+const SINGLE_QUOTES = `’‘‛❛❜'`;
+
+// both these maps share keys
+const callResponses = new Map(); // responses
+const callResponseTypes = new Map(); // types of the responses
+
+const RESPONSE_TYPES = {
+    RESPONSE: 'response',
+    REACT: 'react',
+    NOTHING: 'nothing'
+};
 
 client.on('ready', () => {
     console.log('Meme Machine is ready to go!');
@@ -49,12 +61,39 @@ client.on('message', msg => {
             words[i] = stripPunc(words[i]);
         }
 
+        // replace different quote mark types with default
+        
+        for (let i = 0; i < words.length; i++) {
+            for (let c = 0; c < words[i].length; c++) {
+                let replace = false;
+                if (DOUBLE_QUOTES.includes(words[i][c])) {
+                    replace = words[i].substring(0, c) + `"`;
+                    console.log(`replacing abnormal double quote: ${words[i][c]}`);
+                }
+                if (SINGLE_QUOTES.includes(words[i][c])) {
+                    replace = words[i].substring(0, c) + `'`;
+                    console.log(`replacing abnormal single quote: ${words[i][c]}`);
+                }
+
+                // only add the last part of the word if it exists
+                if (replace && c < words[i].length - 1) {
+                    replace = replace + words[i].substring(c + 1, words[i].length);
+                }
+
+                if (replace) words[i] = replace;
+            }
+        }
+        
+
+        console.log(words);
+
         let firstIsGreet = false;
         if (words[0] === 'hey') firstIsGreet = true;
         if (words[0] === 'hi') firstIsGreet = true;
         if (words[0] === 'hello') firstIsGreet = true;
         if (words[0] === 'yo') firstIsGreet = true;
         if (words[0] === 'sup') firstIsGreet = true;
+        if (words[0] === 'greetings') firstIsGreet = true;
 
         // address the bot!
         if (words.length >= 2 && firstIsGreet && words[1] === 'bot') {
@@ -116,7 +155,7 @@ client.on('message', msg => {
 
                     // check for "respond" action
                     if (!responseType && words.length - index >= 3) {
-                        responseType = 'respond';
+                        responseType = RESPONSE_TYPES.RESPONSE;
                         if (words[index] != 'you') responseType = null;
                         if (words[index + 1] != 'say') responseType = null;
                         // move index to correct position if valid
@@ -125,10 +164,18 @@ client.on('message', msg => {
 
                     // check for "do nothing"
                     if (!responseType && words.length - index >= 2) {
-                        responseType = 'delete';
+                        responseType = RESPONSE_TYPES.NOTHING;
                         if (words[index] != 'do') responseType = null;
                         if (words[index + 1] != 'nothing') responseType = null;
                         // no need to worry about index
+                    }
+
+                    // check for "react with"
+                    if (!responseType && words.length - index >= 3) {
+                        responseType = RESPONSE_TYPES.REACT;
+                        if (words[index] != 'react') responseType = null;
+                        if (words[index + 1] != 'with') responseType = null;
+                        if (responseType) index += 2;
                     }
 
                     // notify user if action is not specified
@@ -142,36 +189,60 @@ client.on('message', msg => {
                 // Note that here, the index will be moved to the correct position to continue parsing.
                 if (teach) {
                     console.log(`Response type: ${responseType}`);
-                    if (responseType === 'respond') {
+                    if (responseType === RESPONSE_TYPES.RESPONSE) {
                         // gather response phrase
                         let response = gatherPhrase(words_og, index, false);
                         if (response) {
                             let responsePhrase = response.phrase;
                             callResponses.set(triggerPhrase, responsePhrase);
+                            callResponseTypes.set(triggerPhrase, RESPONSE_TYPES.RESPONSE);
                             msg.channel.send(`Got it! When someone says "${triggerPhrase}", I'll say "${responsePhrase}"`);
-                            console.log('call and response learned');
+                            
                             console.log(callResponses);
                         } else {
                             msg.reply(`I don't understand. Make sure your "response" starts and ends with double quotes.`);
                         }
                     }
 
-                    if (responseType === 'delete') {
-                        if (callResponses.has(triggerPhrase)) callResponses.delete(triggerPhrase);
+                    if (responseType === RESPONSE_TYPES.REACT) {
+                        // gather reaction
+                        let reaction = gatherPhrase(words_og, index, false);
+                        if (reaction) {
+                            let reactionIcon = gatherPhrase.phrase;
+                            callResponses.set(triggerPhrase, reactionIcon);
+                            callResponseTypes.set(triggerPhrase, RESPONSE_TYPES.REACT);
+                            msg.channel.send(`Alright. When someone says "${triggerPhrase}", I'll react with "${reactionIcon}"`);
+                            console.log('💩');
+                            console.log(callResponses);
+                        } else {
+                            msg.reply(`I don't understand. Make sure your "reaction" is in double quotes.`);
+                        }
+                    }
+
+                    if (responseType === RESPONSE_TYPES.NOTHING) {
+                        if (callResponses.has(triggerPhrase)) {
+                            callResponses.delete(triggerPhrase);
+                            callResponseTypes.delete(triggerPhrase);
+                        }
                         msg.channel.send(`Understood. I won't respond to "${triggerPhrase}" anymore.`);
                     }
                 }
-
             }
         }
 
         let simpleMsg = words.join(' ');
-        console.log(simpleMsg);
+        //console.log(simpleMsg);
 
         // learned call and responses
-        if (callResponses.has(simpleMsg)) {
+        if (callResponseTypes.has(simpleMsg) && callResponseTypes.get(simpleMsg) === RESPONSE_TYPES.RESPONSE) {
             console.log('call recognized, giving response');
             msg.channel.send(callResponses.get(simpleMsg));
+        }
+
+        // learned reactions
+        if (callResponseTypes.has(simpleMsg) && callResponseTypes.get(simpleMsg) === RESPONSE_TYPES.REACT) {
+            console.log('call recognized, giving react');
+            msg.react(callResponses.get(simpleMsg));
         }
 
         // single word effects (some are teachable!)
@@ -191,6 +262,8 @@ client.on('message', msg => {
             if (words[0] === 'boyz') pingEveryone = true;
             if (words[0] === 'guys') pingEveryone = true;
             if (words[0] === 'guyz') pingEveryone = true;
+            if (words[0] === 'bros') pingEveryone = true;
+            if (words[0] === 'broz') pingEveryone = true;
 
             if (pingEveryone) {
                 msg.channel.send('@everyone ' + msg.member.user.username + ' has summoned the boys!');
