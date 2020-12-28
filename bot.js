@@ -29,8 +29,34 @@ const RESPONSE_TYPES = {
     NOTHING: 'nothing'
 };
 
+const DB_TABLES = {
+    RESPONSES: 'responses'
+}
+
+const { Client } = require('pg');
+
+const database = new Client({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false
+    }
+});
+
 client.on('ready', () => {
     console.log('Meme Machine is ready to go!');
+
+    database.connect();
+
+    //'SELECT table_schema,table_name FROM information_schema.tables;'
+    const createTableCommand = `
+        CREATE TABLE IF NOT EXISTS ${DB_TABLES.RESPONSES}(
+            id serial primary key,
+            call text unique not null,
+            response text not null
+        );
+    `;
+    //databaseQuery(`DROP TABLE IF EXISTS ${DB_TABLES.RESPONSES}`);
+    databaseQuery(createTableCommand);
 })
 
 client.on('message', msg => {
@@ -67,7 +93,6 @@ client.on('message', msg => {
                 let replace = false;
                 if (SINGLE_QUOTES.includes(words[i][c])) {
                     replace = words[i].substring(0, c) + `'`;
-                    console.log(`replacing abnormal single quote: ${words[i][c]}`);
                 }
 
                 // only add the last part of the word if it exists
@@ -78,8 +103,6 @@ client.on('message', msg => {
                 if (replace) words[i] = replace;
             }
         }
-
-        console.log(words);
 
         let firstIsGreet = false;
         if (words[0] === 'hey') firstIsGreet = true;
@@ -192,6 +215,10 @@ client.on('message', msg => {
                             callResponseTypes.set(triggerPhrase, RESPONSE_TYPES.RESPONSE);
                             msg.channel.send(`Got it! When someone says "${triggerPhrase}", I'll say "${responsePhrase}"`);
                             
+                            databaseQuery(`
+                                INSERT INTO ${DB_TABLES.RESPONSES} (call, response) VALUES ($1, $2)
+                            `, [triggerPhrase, responsePhrase]);
+
                             console.log(callResponses);
                         } else {
                             msg.reply(`I don't understand. Make sure your "response" starts and ends with double quotes.`);
@@ -228,10 +255,13 @@ client.on('message', msg => {
         //console.log(simpleMsg);
 
         // learned call and responses
+        respondToCall(msg, simpleMsg);
+        /*
         if (callResponseTypes.has(simpleMsg) && callResponseTypes.get(simpleMsg) === RESPONSE_TYPES.RESPONSE) {
             console.log('call recognized, giving response');
             msg.channel.send(callResponses.get(simpleMsg));
         }
+        */
 
         // learned reactions
         if (callResponseTypes.has(simpleMsg) && callResponseTypes.get(simpleMsg) === RESPONSE_TYPES.REACT) {
@@ -347,6 +377,31 @@ const stripPunc = function(str) {
         }
     }
     return str;
+}
+
+const respondToCall = async function(msg, call) {
+    try {
+        let response = await databaseQuery(`SELECT call, response FROM ${DB_TABLES.RESPONSES}`);
+        for (let i = 0; i < response.rows.length; i++) {
+            if (response.rows[i].call === call) {
+                msg.channel.send(response.rows[i].response);
+                i = response.rows.length;
+            }
+        }
+    } catch (err) {
+        console.log(err);
+    }
+}
+
+const databaseQuery = async function(query, values = []) {
+    console.log('running query');
+    try {
+        let success = await database.query(query, values);
+        console.log('success');
+        return success;
+    } catch (err) {
+        console.log(err);
+    }
 }
 
 client.login(process.env.BOT_TOKEN);
