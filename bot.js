@@ -211,15 +211,12 @@ client.on('message', msg => {
                         let response = gatherPhrase(words_og, index, false);
                         if (response) {
                             let responsePhrase = response.phrase;
-                            callResponses.set(triggerPhrase, responsePhrase);
-                            callResponseTypes.set(triggerPhrase, RESPONSE_TYPES.RESPONSE);
-                            msg.channel.send(`Got it! When someone says "${triggerPhrase}", I'll say "${responsePhrase}"`);
+                            //callResponses.set(triggerPhrase, responsePhrase);
+                            //callResponseTypes.set(triggerPhrase, RESPONSE_TYPES.RESPONSE);
+                            //msg.channel.send(`Got it! When someone says "${triggerPhrase}", I'll say "${responsePhrase}"`);
                             
-                            databaseQuery(`
-                                INSERT INTO ${DB_TABLES.RESPONSES} (call, response) VALUES ($1, $2)
-                            `, [triggerPhrase, responsePhrase]);
+                            createCallResponse(msg, triggerPhrase, responsePhrase);
 
-                            console.log(callResponses);
                         } else {
                             msg.reply(`I don't understand. Make sure your "response" starts and ends with double quotes.`);
                         }
@@ -379,9 +376,29 @@ const stripPunc = function(str) {
     return str;
 }
 
+const createCallResponse = async function(msg, call, response) {
+    let entries = await databaseQuery(`SELECT * FROM ${DB_TABLES.RESPONSES}`);
+    let updated = false;
+
+    for (let i = 0; i < entries.rows.length; i++) {
+        if (entries.rows[i].call === call) {
+            // update
+            await databaseQuery(`UPDATE ${DB_TABLES.RESPONSES} SET response = $1 WHERE call = $2`, [response, call]);
+            updated = true;
+            i = entries.rows.length;
+        }
+    }
+
+    if (!updated) {
+        await databaseQuery(`INSERT INTO ${DB_TABLES.RESPONSES} (call, response) VALUES ($1, $2)`, [triggerPhrase, responsePhrase]);
+    }
+
+    msg.channel.send(`Got it! When someone says "${call}", I'll say "${response}"`);
+}
+
 const respondToCall = async function(msg, call) {
     try {
-        let response = await databaseQuery(`SELECT call, response FROM ${DB_TABLES.RESPONSES}`);
+        let response = await databaseQuery(`SELECT * FROM ${DB_TABLES.RESPONSES}`);
         for (let i = 0; i < response.rows.length; i++) {
             if (response.rows[i].call === call) {
                 msg.channel.send(response.rows[i].response);
@@ -394,10 +411,8 @@ const respondToCall = async function(msg, call) {
 }
 
 const databaseQuery = async function(query, values = []) {
-    console.log('running query');
     try {
         let success = await database.query(query, values);
-        console.log('success');
         return success;
     } catch (err) {
         console.log(err);
