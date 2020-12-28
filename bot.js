@@ -390,7 +390,7 @@ const createCallResponse = async function(msg, call, response) {
     }
 
     if (!updated) {
-        await databaseQuery(`INSERT INTO ${DB_TABLES.RESPONSES} (call, response) VALUES ($1, $2)`, [triggerPhrase, responsePhrase]);
+        await databaseQuery(`INSERT INTO ${DB_TABLES.RESPONSES} (call, response) VALUES ($1, $2)`, [call, response]);
     }
 
     msg.channel.send(`Got it! When someone says "${call}", I'll say "${response}"`);
