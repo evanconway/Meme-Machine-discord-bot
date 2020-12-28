@@ -19,10 +19,6 @@ const messages = []; // collection of messages
 const DOUBLE_QUOTES = `“‟””〝〞＂❝❞"`;
 const SINGLE_QUOTES = `’‘‛❛❜'`;
 
-// both these maps share keys
-const callResponses = new Map(); // responses
-const callResponseTypes = new Map(); // types of the responses
-
 const RESPONSE_TYPES = {
     RESPONSE: 'response',
     REACT: 'react',
@@ -203,47 +199,10 @@ client.on('message', msg => {
                 }
 
                 // check different actions
-                // Note that here, the index will be moved to the correct position to continue parsing.
+                // Note that here, the index will have been moved to the correct position to parse phrases.
                 if (teach) {
-                    console.log(`Response type: ${responseType}`);
-                    if (responseType === RESPONSE_TYPES.RESPONSE) {
-                        // gather response phrase
-                        let response = gatherPhrase(words_og, index, false);
-                        if (response) {
-                            let responsePhrase = response.phrase;
-                            //callResponses.set(triggerPhrase, responsePhrase);
-                            //callResponseTypes.set(triggerPhrase, RESPONSE_TYPES.RESPONSE);
-                            //msg.channel.send(`Got it! When someone says "${triggerPhrase}", I'll say "${responsePhrase}"`);
-                            
-                            createCallResponse(msg, triggerPhrase, responsePhrase);
-
-                        } else {
-                            msg.reply(`I don't understand. Make sure your "response" starts and ends with double quotes.`);
-                        }
-                    }
-
-                    if (responseType === RESPONSE_TYPES.REACT) {
-                        // gather reaction
-                        let reaction = gatherPhrase(words_og, index, false);
-                        if (reaction) {
-                            let reactionIcon = gatherPhrase.phrase;
-                            callResponses.set(triggerPhrase, reactionIcon);
-                            callResponseTypes.set(triggerPhrase, RESPONSE_TYPES.REACT);
-                            msg.channel.send(`Alright. When someone says "${triggerPhrase}", I'll react with "${reactionIcon}"`);
-                            console.log('💩');
-                            console.log(callResponses);
-                        } else {
-                            msg.reply(`I don't understand. Make sure your "reaction" is in double quotes.`);
-                        }
-                    }
-
-                    if (responseType === RESPONSE_TYPES.NOTHING) {
-                        if (callResponses.has(triggerPhrase)) {
-                            callResponses.delete(triggerPhrase);
-                            callResponseTypes.delete(triggerPhrase);
-                        }
-                        msg.channel.send(`Understood. I won't respond to "${triggerPhrase}" anymore.`);
-                    }
+                    let phraseObj = gatherPhrase(words_og, index, false);
+                    createCallResponse(triggerPhrase, phraseObj, responseType, msg);
                 }
             }
         }
@@ -253,18 +212,6 @@ client.on('message', msg => {
 
         // learned call and responses
         respondToCall(msg, simpleMsg);
-        /*
-        if (callResponseTypes.has(simpleMsg) && callResponseTypes.get(simpleMsg) === RESPONSE_TYPES.RESPONSE) {
-            console.log('call recognized, giving response');
-            msg.channel.send(callResponses.get(simpleMsg));
-        }
-        */
-
-        // learned reactions
-        if (callResponseTypes.has(simpleMsg) && callResponseTypes.get(simpleMsg) === RESPONSE_TYPES.REACT) {
-            console.log('call recognized, giving react');
-            msg.react(callResponses.get(simpleMsg));
-        }
 
         // single word effects (some are teachable!)
         if (words.length === 1 && words[0] === '^' && messages.length > 1) {
@@ -307,7 +254,7 @@ client.on('message', msg => {
             msg.react('😦');
         }
 
-        if (words[0] === 'ping' && !callResponses.has('ping')) {
+        if (words[0] === 'ping') {
             msg.channel.send('pong');
         }
 
@@ -376,24 +323,48 @@ const stripPunc = function(str) {
     return str;
 }
 
-const createCallResponse = async function(msg, call, response) {
+const createCallResponse = async function(call, phraseObj, type, msg) {
+    if (type === RESPONSE_TYPES.NOTHING) {
+        await databaseQuery(`DELETE FROM ${DB_TABLES.RESPONSES} WHERE call = $1`, [call]);
+        msg.channel.send(`Understood. I won't respond to "${call}" anymore.`);
+        return;
+    }
+
+    let response = null;
+    if (phraseObj) response = phraseObj.phrase; // phraseObj will be null on type === NOTHING
     let entries = await databaseQuery(`SELECT * FROM ${DB_TABLES.RESPONSES}`);
     let updated = false;
 
-    for (let i = 0; i < entries.rows.length; i++) {
-        if (entries.rows[i].call === call) {
-            // update
-            await databaseQuery(`UPDATE ${DB_TABLES.RESPONSES} SET response = $1 WHERE call = $2`, [response, call]);
-            updated = true;
-            i = entries.rows.length;
+    if (type === RESPONSE_TYPES.RESPONSE) {
+        for (let i = 0; i < entries.rows.length; i++) {
+            if (entries.rows[i].call === call) {
+                // update
+                
+                // respond differently if update already exists
+                let oldResponse = entries.rows[i].response;
+
+                if (oldResponse !== response) {
+                    await databaseQuery(`UPDATE ${DB_TABLES.RESPONSES} SET response = $1 WHERE call = $2`, [response, call]);
+                    msg.channel.send(`Got it! When someone says "${call}", I'll say "${response}" instead of "${oldResponse}"!`);
+                } else {
+                    msg.channel.send(`I am already programmed to say "${response}" when someone says "${call}".`);
+                }
+                updated = true;
+                i = entries.rows.length;
+            }
         }
+
+        if (!updated) {
+            await databaseQuery(`INSERT INTO ${DB_TABLES.RESPONSES} (call, response) VALUES ($1, $2)`, [call, response]);
+            msg.channel.send(`Got it! When someone says "${call}", I'll say "${response}"`);
+        }
+        return;
     }
 
-    if (!updated) {
-        await databaseQuery(`INSERT INTO ${DB_TABLES.RESPONSES} (call, response) VALUES ($1, $2)`, [call, response]);
+    if (type === RESPONSE_TYPES.REACT) {
+        msg.channel.send(`Reactions are not implemented yet.`);
+        return;
     }
-
-    msg.channel.send(`Got it! When someone says "${call}", I'll say "${response}"`);
 }
 
 const respondToCall = async function(msg, call) {
