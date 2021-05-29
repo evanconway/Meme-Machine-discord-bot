@@ -221,7 +221,7 @@ client.on('message', msg => {
         }
 
         // triple word effects
-        if (words.length === 3 && words[0] === words[1] && words[1] === words[2]) {
+        if (words.length >= 3 && words[0] === words[1] && words[1] === words[2]) {
             console.log('Triple word detected.');
 
             let pingEveryone = false;
