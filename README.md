@@ -5,14 +5,7 @@ A discord bot designed to make hanging out with friends more fun!
 ## Features
 
 ### Beetlejuice Reference
-Type one of these words three times to ping everyone on the server:
-boys
-bois
-boyz
-guys
-guyz
-bros
-broz
+Type one of these words three times to ping everyone on the server: boys, bois, boyz, guys, guyz, bros, broz.
 
 ### Upvote With Message
 Send a message containing only the ^caret symbol to place an up arrow reaction on the previous message. Your ^caret message will be automatically deleted.
