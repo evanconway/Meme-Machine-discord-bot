@@ -31,12 +31,7 @@ const DB_TABLES = {
 
 const { Client } = require('pg');
 
-const database = new Client({
-    connectionString: process.env.DATABASE_URL,
-    ssl: {
-        rejectUnauthorized: false
-    }
-});
+const database = new Client();
 
 client.on('ready', () => {
     console.log('Meme Machine is ready to go!');
