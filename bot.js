@@ -38,7 +38,6 @@ client.on('ready', () => {
 
     database.connect();
 
-    //'SELECT table_schema,table_name FROM information_schema.tables;'
     const createTableCommand = `
         CREATE TABLE IF NOT EXISTS ${DB_TABLES.RESPONSES}(
             id serial primary key,
@@ -202,7 +201,6 @@ client.on('message', msg => {
         }
 
         let simpleMsg = words.join(' ');
-        //console.log(simpleMsg);
 
         // learned call and responses
         respondToCall(msg, simpleMsg);
