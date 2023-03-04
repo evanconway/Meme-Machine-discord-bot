@@ -51,7 +51,6 @@ client.on('ready', () => {
             response text not null
         );
     `;
-    //databaseQuery(`DROP TABLE IF EXISTS ${DB_TABLES.RESPONSES}`);
     databaseQuery(createTableCommand);
 })
 
