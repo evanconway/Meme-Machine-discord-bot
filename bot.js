@@ -33,19 +33,9 @@ const { Client } = require('pg');
 
 const database = new Client();
 
-client.on('ready', () => {
+client.on('ready', async () => {
+    await database.connect();
     console.log('Meme Machine is ready to go!');
-
-    database.connect();
-
-    const createTableCommand = `
-        CREATE TABLE IF NOT EXISTS ${DB_TABLES.RESPONSES}(
-            id serial primary key,
-            call text unique not null,
-            response text not null
-        );
-    `;
-    databaseQuery(createTableCommand);
 })
 
 client.on('message', msg => {
