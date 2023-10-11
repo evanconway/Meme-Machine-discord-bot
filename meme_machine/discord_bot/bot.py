@@ -55,6 +55,18 @@ async def on_message(message):
             await r.adelete()
             await message.channel.send(f'Got it. I won\'t respond to "{split[1]}" anymore.')
 
+    if check == 'i love bots':
+        await message.add_reaction('❤️')
+    
+    if check == 'i hate bots':
+        await message.add_reaction('💩')
+    
+    if check == 'good bot':
+        await message.add_reaction('👍')
+    
+    if check == 'bad bot':
+        await message.add_reaction('😦')
+
 def start_bot():
     client.run(os.getenv('BOT_TOKEN'))
 
