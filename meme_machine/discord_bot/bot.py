@@ -12,6 +12,9 @@ intents.message_content = True
 
 client = discord.Client(intents=intents)
 
+greetings = ['hey', 'hi', 'hello', 'yo', 'sup', 'greetings']
+summons = ['boys', 'bois', 'boyz', 'guys', 'guyz', 'bros', 'broz']
+
 
 @sync_to_async
 def get_response(call):
@@ -32,11 +35,11 @@ async def on_message(message):
         return
     
     check = str(message.content.lower())
-
     stored_response = await get_response(message.content.lower())
 
     if stored_response is not None:
         await message.channel.send(stored_response.response)
+        return
 
     if check.startswith('$set'):
         split = re.split('[\[\]]', message.content)
@@ -45,6 +48,7 @@ async def on_message(message):
             return
         await Response(call=split[1].lower(), response=split[3]).asave()
         await message.channel.send(f'Got it. When someone says "{split[1]}" I\'ll say "{split[3]}".')
+        return
     
     if check.startswith('$del'):
         split = re.split('[\[\]]', message.content)
@@ -57,23 +61,39 @@ async def on_message(message):
         else:
             await r.adelete()
             await message.channel.send(f'Got it. I won\'t respond to "{split[1]}" anymore.')
+        return
 
     if check == 'i love bots':
         await message.add_reaction('❤️')
+        return
     
     if check == 'i hate bots':
         await message.add_reaction('💩')
+        return
     
     if check == 'good bot':
         await message.add_reaction('👍')
+        return
     
     if check == 'bad bot':
         await message.add_reaction('😦')
+        return
     
     if check == '^':
         messages = [m async for m in message.channel.history(limit=2)]
         await messages[1].add_reaction('⬆️')
         await message.delete()
+        return
+    
+    words = re.split(' ', check)
+    all_same = words[0] == words[1] and words[1] == words[2]
+    if len(words) >= 3 and all_same and words[0] in summons:
+        await message.channel.send(f'@everyone {message.author} has summoned the boys!')
+        return
+    
+    if words[0] in greetings and words[1] == 'bot':
+        await message.channel.send(f'Hi {message.author}!')
+        return
 
 
 def start_bot():
