@@ -12,6 +12,7 @@ intents.message_content = True
 
 client = discord.Client(intents=intents)
 
+
 @sync_to_async
 def get_response(call):
     try:
@@ -19,9 +20,11 @@ def get_response(call):
     except:
         pass
 
+
 @client.event
 async def on_ready():
     print(f'We have logged in as {client.user}')
+
 
 @client.event
 async def on_message(message):
@@ -66,6 +69,12 @@ async def on_message(message):
     
     if check == 'bad bot':
         await message.add_reaction('😦')
+    
+    if check == '^':
+        messages = [m async for m in message.channel.history(limit=2)]
+        await messages[1].add_reaction('⬆️')
+        await message.delete()
+
 
 def start_bot():
     client.run(os.getenv('BOT_TOKEN'))
